@@ -153,7 +153,7 @@ func moveFile(filepath, newDirectory, filename string) error {
 }
 
 func main() {
-	image_list, _ := getImageLists("testfile")
+	image_list, _ := getImageLists("input")
 
 	result_map, duplicate, _ := analyzeImages(image_list)
 
