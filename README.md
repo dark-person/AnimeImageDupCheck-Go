@@ -2,6 +2,8 @@
 
 A Tool Written By GoLang, that help seperate duplicate image.
 
+This Project is based on [AnimeImageDuplicateCheck](https://github.com/dark-person/AnimeImageDuplicateCheck), which is written by Python.
+
 # Require
 
 You need Go installed in you computer.
@@ -12,7 +14,7 @@ You need Go installed in you computer.
 go build
 ```
 
-And run the executable. You should ensure that is a directory called `input\`.
+And run the executable. You should ensure that is a directory called `input/`.
 
 Also, ensure some file is inside the `input/` directory.
 
