@@ -40,7 +40,7 @@ func getImageLists(directory string) ([]ImageFile, error) {
 
 	files, files_err := os.ReadDir(directory)
 	if files_err != nil {
-		log.Fatal(files_err)
+		log.Fatal("Cannot open Directory to get Image List, ", files_err)
 	}
 
 	for _, file := range files {
@@ -70,7 +70,7 @@ func getImageLists(directory string) ([]ImageFile, error) {
 func analyzeImage(imageFile *ImageFile) (string, error) {
 	file, file_err := os.Open(imageFile.Fullpath)
 	if file_err != nil {
-		log.Fatal(file_err)
+		log.Fatal("Cannot Open Specific Image, ", file_err)
 	}
 
 	fileinfo, _ := file.Stat()
@@ -79,7 +79,7 @@ func analyzeImage(imageFile *ImageFile) (string, error) {
 
 	temp_image, _, image_err := image.Decode(bufio.NewReader(file))
 	if image_err != nil {
-		log.Fatal(image_err)
+		log.Fatal("Cannot Decode Specific Image, ", image_err)
 	}
 
 	imageFile.Width = temp_image.Bounds().Dx()
@@ -107,11 +107,12 @@ func analyzeImages(filelist []ImageFile) (map[string]ImageFile, []DuplicateImage
 		value, isExist := hash_map[hash_value]
 
 		if !isExist {
-			log.Println("New Hash Value Detected. Adding :", value)
+			log.Println("New Hash Value (", hash_value, ") Detected. File added :", file.Filename)
 			hash_map[hash_value] = file
 		} else {
-			log.Println("Hash Value Exist. Start Comparing.. ")
-			log.Println("Current Best Image Size: ", value.Filesize, " ; New Image Size: ", file.Filesize)
+			log.Println("Hash Value (", hash_value, ")Exist. Start Comparing.. ")
+			log.Println("Current Best Image (", value.Filename, ") Size: ", value.Filesize)
+			log.Println("New Image (", file.Filename, ") Size: ", file.Filesize)
 
 			if file.Filesize > value.Filesize {
 				// Create New DuplicateImage Record
@@ -123,7 +124,7 @@ func analyzeImages(filelist []ImageFile) (map[string]ImageFile, []DuplicateImage
 				duplicate_list = append(duplicate_list, temp)
 				hash_map[hash_value] = file
 
-				log.Println("Updated the best image.")
+				log.Println("Updated the best image (", file.Filename, ").")
 			} else {
 				// Create New DuplicateImage Record
 				var temp DuplicateImage
@@ -132,7 +133,7 @@ func analyzeImages(filelist []ImageFile) (map[string]ImageFile, []DuplicateImage
 				temp.HashValue = hash_value
 
 				duplicate_list = append(duplicate_list, temp)
-				log.Println("Add new duplicate image.")
+				log.Println("Add new duplicate image (", file.Filename, ").")
 			}
 		}
 		// Message For info User progress
@@ -153,28 +154,55 @@ func moveFile(filepath, newDirectory, filename string) error {
 }
 
 func main() {
-	image_list, _ := getImageLists("input")
+	// Set Logger
+	log_file, err := os.OpenFile("activity.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal("Cannot Open Log File, ", err)
+	}
+	defer log_file.Close()
+	log.SetOutput(log_file)
+
+	log.Println("=====  Log Ready. Program Start.")
+
+	// Get Image List by directory
+	image_list, input_err := getImageLists("input")
+	if input_err != nil {
+		log.Fatal("Cannot Open Directory", input_err)
+	}
 
 	result_map, duplicate, _ := analyzeImages(image_list)
 
+	fmt.Println("Result is completed. ", len(duplicate), " duplicate Found. ")
+	fmt.Println("Now transfer file to different folder.")
+
+	// Start Record and move file
+	record, record_err := os.OpenFile("record.txt", os.O_RDWR|os.O_CREATE, 0755)
+	if record_err != nil {
+		log.Fatal("Cannot open record.txt, ", record_err)
+	}
+
 	// Print and Move Result and Duplicates
-	fmt.Println("Best Image:")
+	record.WriteString("Best Image:\n")
 	for _, item := range result_map {
-		fmt.Println(item.Filename)
+		record.WriteString(fmt.Sprintf(item.Filename) + "\n")
+
 		err := moveFile(item.Fullpath, "Best", item.Filename)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Cannot Move Image to Best,", err)
 		}
 	}
 
-	fmt.Println("==========")
+	record.WriteString("================================================\n\n")
 
-	fmt.Println("Duplicate Image:")
+	record.WriteString("Duplicate Image:\n")
 	for _, item := range duplicate {
-		fmt.Println(item.Filename, " (Duplicate of ", result_map[item.HashValue].Filename, ")")
+		record.WriteString(fmt.Sprintf("%s (Duplicate of %s)\n", item.Filename, result_map[item.HashValue].Filename))
+
 		err := moveFile(item.Fullpath, "Duplicate", item.Filename)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Cannot Move Image to Duplicate,", err)
 		}
 	}
+
+	log.Println("===================================== Finish ===========================================")
 }
